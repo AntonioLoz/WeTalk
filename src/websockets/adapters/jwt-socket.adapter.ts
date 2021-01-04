@@ -1,6 +1,6 @@
 import { INestApplicationContext, UnauthorizedException } from "@nestjs/common";
 import { IoAdapter } from "@nestjs/platform-socket.io";
-import { ServerOptions, Server, Socket } from "socket.io";
+import { ServerOptions, Server } from "socket.io";
 import { JwtStrategy } from "src/auth/jwt.strategy";
 import { TokenDTO } from "src/models/token.dto";
 import { AuthService } from "src/services/auth.service";

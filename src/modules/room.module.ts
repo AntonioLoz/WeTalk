@@ -10,7 +10,6 @@ import { UsersModule } from './users.module';
 @Module({
     imports: [
         ConfigModule.forRoot(),
-        StrategyModule,
         PassportModule,
         JwtModule.register({
           secret: process.env.JWT_SECRET,

@@ -9,24 +9,26 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @WebSocketServer()
     server: Server;
-    clients: Array<string>;
+    clientsConnected: Array<string>;
 
-    constructor(private jwtStrategy: JwtStrategy) {
-        this.clients = new Array<string>();
+    constructor() {
+
     }
 
     async handleConnection(client: CustomSocket, ...args: any[]) {
 
 
         console.log("User connected:", client.user.username);
-        this.clients.push(client.id);
+
+        // lista de las ids de los clientes conectados
+        this.clientsConnected = Object.keys(this.server.clients().sockets);
+
     }
 
     handleDisconnect(client: CustomSocket) {
+
         console.log("Client disconnected:", client.id);
-        this.clients.splice(this.clients.indexOf(client.id), 1);
-        
-        // client.server.emit('user-changed', {})
+        this.clientsConnected = Object.keys(this.server.clients().sockets);
     }
 
     @SubscribeMessage('createRoom')

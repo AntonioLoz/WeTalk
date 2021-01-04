@@ -26,7 +26,13 @@ export class AuthService {
     }
 
     async verify(tokenDTO: TokenDTO): Promise<UserDTO> {
-        const payload = await this.jwtService.verifyAsync<JwtPayload>(tokenDTO.token);
-        return this.userService.getByUsername(payload.username);
+        try{
+        
+            const payload = await this.jwtService.verifyAsync<JwtPayload>(tokenDTO.token);
+            return this.userService.getByUsername(payload.username);
+        }
+        catch(err) {
+            throw new Error(err.message)
+        }
     }
 }
