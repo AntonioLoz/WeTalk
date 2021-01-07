@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from 'src/models/jwt.payload';
-import { TokenDTO } from 'src/models/token.dto';
-import { UserDTO } from 'src/models/user.dto';
-import { User } from 'src/models/user.entity';
+import { TokenDTO } from 'src/models/dtos/token.dto';
+import { UserDTO } from 'src/models/dtos/user.dto';
 import { UserService } from './user.service';
+import { User } from 'src/models/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -20,19 +20,14 @@ export class AuthService {
 
     async generateToken(username: string): Promise<TokenDTO> {
         const user = await this.userService.getByUsername(username);
-        const payload = new JwtPayload(user.username);        
+        const payload = new JwtPayload(user.id, user.username);        
 
         return new TokenDTO(this.jwtService.sign(JSON.parse(payload.toString())));
     }
 
-    async verify(tokenDTO: TokenDTO): Promise<UserDTO> {
-        try{
+    async verify(tokenDTO: TokenDTO): Promise<User> {
         
-            const payload = await this.jwtService.verifyAsync<JwtPayload>(tokenDTO.token);
-            return this.userService.getByUsername(payload.username);
-        }
-        catch(err) {
-            throw new Error(err.message)
-        }
+        const payload = await this.jwtService.verifyAsync<JwtPayload>(tokenDTO.token);
+        return await this.userService.getByUsername(payload.username);
     }
 }

@@ -1,9 +1,11 @@
-import { BaseEntity, BeforeInsert, Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { BaseEntity, BeforeInsert, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Room } from "./room.entity";
 import * as bcrypt  from 'bcrypt'
+import { Friendship } from "./friendship.entity";
 
 @Entity('users')
 export class User extends BaseEntity {
+    
 
     @PrimaryGeneratedColumn('uuid')
     readonly id: string;
@@ -11,17 +13,31 @@ export class User extends BaseEntity {
     @Column({
         unique: true
     })
-    readonly username: string;
+    username: string;
 
     @Column({ type: "varchar", length: 60, nullable: true})
     password: string;
 
     @Column({ type: "varchar", nullable: true})
-    socketId: string
+    socketId: string;
+
+    @Column({ type: "boolean", nullable: true})
+    isOnline: boolean;
+
+    @OneToMany( () => Friendship, friend => friend.requester, {cascade: true, eager: true} )
+    friendRequests: Array<Friendship>;
+
+    @OneToMany( () => Friendship, friend => friend.friend, {cascade: true, eager: true} )
+    friends: Array<Friendship>;
 
     @ManyToOne( () => Room, room => room.users)
     room: Room;
  
+    @CreateDateColumn()
+    registeredAt: Date;
+  
+    @UpdateDateColumn()
+    updatedAt: Date;
 
     constructor(username: string, password: string) {
         super();
