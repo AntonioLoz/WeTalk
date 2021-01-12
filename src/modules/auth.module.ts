@@ -6,7 +6,7 @@ import { UsersModule } from './users.module';
 import { ConfigModule } from "@nestjs/config";
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
-import { TestModule } from './test.module';
+import { FriendsModule } from './friends.module';
 
 @Module({
   imports: [
@@ -17,6 +17,8 @@ import { TestModule } from './test.module';
           secret: process.env.JWT_SECRET,
           signOptions: { expiresIn: '1h'},
       }),
+      FriendsModule,
+      
     ],
     controllers: [LoginController],
     providers: [AuthService, JwtStrategy],

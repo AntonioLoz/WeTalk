@@ -1,7 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FriendDTO } from 'src/models/dtos/friend.dto';
-import { UserDTO } from 'src/models/dtos/user.dto';
 import { User } from 'src/models/entities/user.entity';
 import { Repository, UpdateResult } from 'typeorm';
 
@@ -43,43 +41,6 @@ export class UserService {
     
         
         return this.repository.update({ id: id }, {});;
-    }
-
-    async getFriendships(userId: string): Promise<Array<FriendDTO>> {
-        
-        const friends = new Array<FriendDTO>(); 
-        const user = await this.repository.findOne(userId);
-        let friendDto: FriendDTO;
-
-        if(!user) {
-            throw new NotFoundException("User not found: " + userId);
-        }
-
-        user.friends.forEach( (friendship) => {
-            friendDto = new FriendDTO(friendship.friend.id, friendship.friend.username);
-            friends.push(friendDto);
-        });
-
-        return friends;
-    }
-
-    async getFriendRequests(userId: string): Promise<Array<FriendDTO>> {
-
-        const friends = new Array<FriendDTO>(); 
-        const user = await this.repository.findOne(userId);
-        let friendDto: FriendDTO;
-        
-        if(!user) {
-            throw new NotFoundException("User not found: " + userId);
-        }
-
-        user.friendRequests.forEach( (friendship) => {
-            
-            friendDto = new FriendDTO(friendship.requester.id, friendship.requester.username);
-            friends.push(friendDto);
-        });
-
-        return friends;
     }
 
     async setUserConnection(userId: string, isOnline: boolean, socketId?: string,): Promise<UpdateResult> {

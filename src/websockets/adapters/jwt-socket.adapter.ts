@@ -2,7 +2,6 @@ import { INestApplicationContext } from "@nestjs/common";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { ServerOptions, Server } from "socket.io";
 import { TokenDTO } from "src/models/dtos/token.dto";
-import { UserDTO } from "src/models/dtos/user.dto";
 import { User } from "src/models/entities/user.entity";
 import { AuthService } from "src/services/auth.service";
 import { UserService } from "src/services/user.service";
@@ -35,15 +34,17 @@ export class JwtSocketAdapter extends IoAdapter {
                 console.log("give me a token, cousin!");
                 
                 next(new Error('Authentitacion fail'));
-            }
+            }            
 
             this.authService.verify(new TokenDTO(socket.handshake.query.token)).then( async (user: User) => {
                 try{
                     await this.userService.setUserConnection(user.id, true, socket.id);
                     user.isOnline = true;
                     user.socketId = socket.id;
+                    console.log("TEST[Adapter](verify): ", user);
+                    
                     socket.user = user;
-                    next();
+                    return next();
                 }
                 catch(error) {
                     console.log(error);
@@ -53,9 +54,9 @@ export class JwtSocketAdapter extends IoAdapter {
                 
 
             }).catch( (err) => {
-                console.log(err);
+                console.log("Error verifying token:", err);
                 
-                next(new Error(err.message));
+                next(err);
             });
         });
         return server;
