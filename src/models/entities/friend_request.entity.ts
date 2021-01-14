@@ -9,10 +9,10 @@ export class FriendRequest extends BaseEntity {
     id: string
 
     @ManyToOne( () => User, user => user.id)
-    user: UserDTO;
+    user: User;
 
     @ManyToOne(() => User, user => user.id)
-    requester: UserDTO;
+    requested: User;
 
     @CreateDateColumn()
     registeredAt: Date;
@@ -21,10 +21,10 @@ export class FriendRequest extends BaseEntity {
     updatedAt: Date;
 
 
-    constructor(user: UserDTO, requester: UserDTO) {
+    constructor(user: User, requester: User) {
         
         super();
         this.user = user;
-        this.requester = requester;
+        this.requested = requester;
     }
 }

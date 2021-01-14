@@ -1,45 +1,43 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { UserDTO } from 'src/models/dtos/user.dto';
-import { Friend } from 'src/models/entities/friend.entity';
-import { FriendRequest } from 'src/models/entities/friend_request.entity';
-import { DeleteResult, Repository } from 'typeorm';
-import { UserService } from './user.service';
+// import { Injectable, NotFoundException } from '@nestjs/common';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { UserDTO } from 'src/models/dtos/user.dto';
+// import { Friend } from 'src/models/entities/friend.entity';
+// import { FriendRequest } from 'src/models/entities/friend_request.entity';
+// import { User } from 'src/models/entities/user.entity';
+// import { DeleteResult, Repository } from 'typeorm';
+// import { UserService } from './user.service';
 
-@Injectable()
-export class FriendRequestService {
+// @Injectable()
+// export class FriendRequestService {
 
-    constructor(@InjectRepository(FriendRequest) private repository: Repository<FriendRequest>, private userService: UserService) {
+//     constructor(@InjectRepository(FriendRequest) private repository: Repository<FriendRequest>, private userService: UserService) {
 
-    }
+//     }
 
-    async set(userId: string, requesterId: string): Promise<boolean> {
+//     async set(user: UserDTO, requester: UserDTO): Promise<FriendRequest> {
 
-        const user = <UserDTO> await this.userService.getById(userId);
-        const requester = <UserDTO> await this.userService.getById(requesterId);
+//         if(!user) throw new NotFoundException("User not found with id:" + user.id);
+//         if(!requester) throw new NotFoundException("Requester not found with id:" + requester.id);
 
-        if(!user) throw new NotFoundException("User not found with id:" + userId);
-        if(!requester) throw new NotFoundException("Requester not found with id:" + requesterId);
+//         const friendRequest = new FriendRequest(user, requester);
 
-        const friendRequest = new Friend(user, requester);
+//         return this.repository.save(friendRequest);
+//     }
 
-        return !!this.repository.save(friendRequest);
-    }
+//     async get(userId: string): Promise<Array<Friend>> {
 
-    async get(userId: string): Promise<Array<Friend>> {
+//         const user = await this.userService.getById(userId);
+//         if(!user) throw new NotFoundException("User not found with id:" + userId);
 
-        const user = await this.userService.getById(userId);
-        if(!user) throw new NotFoundException("User not found with id:" + userId);
+//         return user.friends;
+//     }
 
-        return user.friends;
-    }
+//     async delete(userId: string): Promise<DeleteResult> {
 
-    async delete(userId: string): Promise<DeleteResult> {
-
-        const user = await this.userService.getById(userId);
-        if(!user) throw new NotFoundException("User not found with id:" + userId);
+//         const user = await this.userService.getById(userId);
+//         if(!user) throw new NotFoundException("User not found with id:" + userId);
 
         
-        return this.repository.delete(userId);
-    }
-}
+//         return this.repository.delete(userId);
+//     }
+// }

@@ -1,9 +1,14 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer, WsResponse } from "@nestjs/websockets";
 import { Server } from 'socket.io'
+import { FriendDTO } from "src/models/dtos/friend.dto";
+import { UserDTO } from "src/models/dtos/user.dto";
+import { FriendRequest } from "src/models/entities/friend_request.entity";
+import { FriendshipService } from "src/services/friend.service";
+// import { FriendRequestService } from "src/services/friend_request.service";
 import { UserService } from "src/services/user.service";
 import { CustomSocket } from '../customSocket'
 
-@WebSocketGateway({namespace: '/rooms', path: '/rooms', transports: ['polling', 'websockets']})
+@WebSocketGateway({namespace: '/chat', path: '/chat', transports: ['polling', 'websockets']})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 
@@ -11,7 +16,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     server: Server;
     clientsConnected: Array<string>;
 
-    constructor(private userService: UserService) {
+    constructor(private userService: UserService, private friendService: FriendshipService) {
 
     }
 
@@ -19,7 +24,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     async handleConnection(client: CustomSocket, ...args: any[]) {
 
         try{
-            console.log("User connected:");
+            console.log("User connected to chat gateway:");
             console.log("   username: ", client.user.username);
             console.log("   socketId:", client.id);
             
@@ -27,34 +32,62 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             this.clientsConnected = Object.keys(this.server.clients().sockets);
         }
         catch(err) {
-            console.log(err);  
+            console.error(err);  
         }
     }
 
     async handleDisconnect(client: CustomSocket) {
 
         try {
-            // todo: Actualizar el usuario a desconectado y borrar el socketid
-            this.userService.setUserConnection(client.user.id, false, null);
+    
+            this.userService.updateUserConnection(client.user.id, false, null);
             console.log("User disconnected:");
             console.log("   username: ", client.user.username);
             console.log("   socketId:", client.id);
         }
         catch(error) {
-            console.log(error);
-            
+            console.error(error);
         }
         
         
         this.clientsConnected = Object.keys(this.server.clients().sockets);
     }
 
-    @SubscribeMessage('add_friend')
-    createRoom(@ConnectedSocket() client: CustomSocket, @MessageBody() room: string): WsResponse<string> {
+    @SubscribeMessage('friend_request')
+    async addFriendRequest(@ConnectedSocket() client: CustomSocket, @MessageBody() friendId: string): Promise<WsResponse<any>> {
+        let wsResponse: WsResponse
+        try {
+            const friend = await this.userService.getById(friendId);
+
+            const friendRequested = await this.friendService.newRequest(client.user, friend);
+            if(friend.isOnline){
+
+                this.server.emit('friend_request', friend).to(friend.socketId);
+            }
+            
+            wsResponse = { event: 'friend_request_resolution', data: friendRequested }
+
+        } catch (error) {
+            console.error(error);
+            wsResponse = { event: 'friend_request_resolution', data: error }
+        }
         
-        console.log("User: ", client.user);
-        
-        
-        return { event: 'RoomCreated', data: 'Room'};
+        return wsResponse;
     }
+
+    // todo: completar wsResponse
+    @SubscribeMessage('accept_friendship')
+    async acceptedFriend(@ConnectedSocket() client: CustomSocket, @MessageBody() idRequest: string): Promise<WsResponse<FriendDTO>> {
+        let wsResponse: WsResponse;
+        try {
+            await this.friendService.acceptFriendRequest(idRequest);
+            
+            wsResponse = { event: '', data: ''}
+        } catch (error) {
+            console.error(error);
+            wsResponse = { event: '', data: ''}
+        }
+
+        return wsResponse;
+    } 
 }

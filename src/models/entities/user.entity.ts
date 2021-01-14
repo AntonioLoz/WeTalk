@@ -1,7 +1,7 @@
 import { BaseEntity, BeforeInsert, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Room } from "./room.entity";
 import * as bcrypt  from 'bcrypt'
-import { Friend } from "./friend.entity";
+import { Friendship } from "./friend.entity";
 import { FriendRequest } from "./friend_request.entity";
 
 @Entity('users')
@@ -25,11 +25,11 @@ export class User extends BaseEntity {
     @Column({ type: "bool", nullable: true})
     isOnline: boolean;
 
-    @OneToMany( () => FriendRequest, friendRequest => friendRequest.requester, {cascade: true, eager: true} )
+    @OneToMany( () => FriendRequest, friendRequest => friendRequest.requested)
     friendRequests: Array<FriendRequest>;
 
-    @OneToMany( () => Friend, friend => friend.user, {cascade: true, eager: true} )
-    friends: Array<Friend>;
+    @OneToMany( () => Friendship, friend => friend.user)
+    friends: Array<Friendship>;
 
     @ManyToOne( () => Room, room => room.users)
     room: Room;

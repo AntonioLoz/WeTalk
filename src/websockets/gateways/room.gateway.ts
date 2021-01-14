@@ -43,7 +43,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
         
         
         // todo: Actualizar el usuario a desconectado y borrar el socketid
-        this.userService.setUserConnection(client.user.id, false, null);
+        this.userService.updateUserConnection(client.user.id, false, null);
         this.clientsConnected = Object.keys(this.server.clients().sockets);
     }
 

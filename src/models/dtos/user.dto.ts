@@ -1,4 +1,6 @@
-import { Friend } from "../entities/friend.entity";
+import { Friendship } from "../entities/friend.entity";
+import { FriendRequest } from "../entities/friend_request.entity";
+// import { FriendRequest } from "../entities/friend_request.entity";
 
 export class UserDTO {
 
@@ -6,8 +8,8 @@ export class UserDTO {
     username: string;
     socketId: string;
     isOnline: boolean
-    friends: Array<Friend>;
-    // friends: Array<Friendship>;
+    friends: Array<Friendship>;
+    friendRequests: Array<FriendRequest>
 
     constructor(id: string, username: string, socketId?: string) {
         this.id = id;
