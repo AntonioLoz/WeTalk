@@ -17,11 +17,12 @@ export class AuthService {
         return await user.validatePassword(password);
     }
 
-    async generateToken(username: string): Promise<TokenDTO> {
+    async generateToken(username: string): Promise<string> {
+        
         const user = await this.userService.getByUsername(username);
         const payload = new JwtPayload(user.id, user.username);        
 
-        return new TokenDTO(this.jwtService.sign(JSON.parse(payload.toString())));
+        return await this.jwtService.signAsync(JSON.parse(payload.toString()));
     }
 
     async verify(tokenDTO: TokenDTO): Promise<User> {

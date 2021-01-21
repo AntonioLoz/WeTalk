@@ -1,15 +1,12 @@
+import { UserDTO } from "./user.dto";
 
-export class FriendDTO {
+export class FriendDTO extends UserDTO {
     
-    id: string;
-    username: string;
-    socketId: string;
-    isOnline: boolean;
-
-    constructor( id: string, username: string, isOnline: boolean, socketId?: string) {
-        this.id = id;
-        this.username = username;
-        this.isOnline = isOnline;
-        this.socketId = socketId;
+    idFriendship: string;
+    
+    constructor(idFriendship: string, idRequester: string, username: string, isOnline?: boolean, sockeId?: string) {
+        
+        super(idRequester, username, isOnline, sockeId);
+        this.idFriendship = idFriendship;
     }
 }

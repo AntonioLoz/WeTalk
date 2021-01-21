@@ -7,16 +7,12 @@ export class UserDTO {
     id: string;
     username: string;
     socketId: string;
-    isOnline: boolean
-    friends: Array<Friendship>;
-    friendRequests: Array<FriendRequest>
+    isOnline: boolean;
 
-    constructor(id: string, username: string, socketId?: string) {
+    constructor(id: string, username: string, isOnline?: boolean, socketId?: string) {
         this.id = id;
         this.username = username;
-        
-        if(socketId){
-            this.socketId = socketId;
-        }
+        this.isOnline = isOnline;
+        this.socketId = socketId;
     }
 }

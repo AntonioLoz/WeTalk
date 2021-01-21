@@ -17,8 +17,8 @@ export class LoginController {
             throw new UnauthorizedException();
         }
 
-        const response = await this.authService.generateToken(loginDTO.username);        
+        const token = await this.authService.generateToken(loginDTO.username);        
 
-        return response;
+        return new TokenDTO(token);
     }
 }

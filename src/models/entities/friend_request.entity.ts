@@ -1,5 +1,4 @@
 import { BaseEntity, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { UserDTO } from "../dtos/user.dto";
 import { User } from "./user.entity";
 
 @Entity('friend_requests')
@@ -8,10 +7,10 @@ export class FriendRequest extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string
 
-    @ManyToOne( () => User, user => user.id)
+    @ManyToOne( () => User, user => user.id, {eager: true, cascade: true})
     user: User;
 
-    @ManyToOne(() => User, user => user.id)
+    @ManyToOne(() => User, user => user.id, {eager: true, cascade: true})
     requested: User;
 
     @CreateDateColumn()

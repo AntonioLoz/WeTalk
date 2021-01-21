@@ -1,10 +1,8 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer, WsResponse } from "@nestjs/websockets";
 import { Server } from 'socket.io'
 import { FriendDTO } from "src/models/dtos/friend.dto";
-import { UserDTO } from "src/models/dtos/user.dto";
-import { FriendRequest } from "src/models/entities/friend_request.entity";
+import { RequestFriendDTO } from "src/models/dtos/request_friend.dto";
 import { FriendshipService } from "src/services/friend.service";
-// import { FriendRequestService } from "src/services/friend_request.service";
 import { UserService } from "src/services/user.service";
 import { CustomSocket } from '../customSocket'
 
@@ -57,9 +55,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     async addFriendRequest(@ConnectedSocket() client: CustomSocket, @MessageBody() friendId: string): Promise<WsResponse<any>> {
         let wsResponse: WsResponse
         try {
+            
+            const friendRequested = await this.friendService.newRequest(new RequestFriendDTO(client.user.id, friendId));
             const friend = await this.userService.getById(friendId);
-
-            const friendRequested = await this.friendService.newRequest(client.user, friend);
+            
             if(friend.isOnline){
 
                 this.server.emit('friend_request', friend).to(friend.socketId);

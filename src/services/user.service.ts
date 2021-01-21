@@ -10,13 +10,16 @@ export class UserService {
 
     }
 
+    // todo: Retornar UserDTO
     async getAll(): Promise<Array<User>> {
         return await this.repository.find();
     }
 
     async getById(id: string): Promise<User> {
+
         const user = await this.repository.findOne(id);
-        if(!user) throw new NotFoundException(`User with id ${id} not found.`)
+        if(!user) throw new NotFoundException(`User with id ${id} not found.`);
+
         return user;
     }
 

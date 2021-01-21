@@ -1,97 +1,112 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FriendDTO } from 'src/models/dtos/friend.dto';
-import { UserDTO } from 'src/models/dtos/user.dto';
+import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
 import { Friendship } from 'src/models/entities/friend.entity';
 import { FriendRequest } from 'src/models/entities/friend_request.entity';
-import { DeleteResult, Repository } from 'typeorm';
+import { Connection, DeleteResult, Repository } from 'typeorm';
 import { UserService } from './user.service';
 
 @Injectable()
 export class FriendshipService {
 
-    constructor(@InjectRepository(Friendship) private friendShipRepository: Repository<Friendship>, @InjectRepository(FriendRequest) private requestRepository: Repository<FriendRequest> , private userService: UserService) {
+    // Inyectamos Connection para poder hacer uso de QueryRunner y así tener control sobre las 
+    // transacciones. 
+    constructor(
+        @InjectRepository(Friendship) private friendShipRepository: Repository<Friendship>, 
+        @InjectRepository(FriendRequest) private requestRepository: Repository<FriendRequest>, 
+        private userService: UserService,
+        private connection: Connection) {
 
     }
 
-    // nueva solicitud de amistad (emisor, receptor)
-    async newRequest(userDto: UserDTO, requesterDto: UserDTO): Promise<FriendRequest> {
+    // nueva solicitud de amistad (emisor, receptor).
+    async newRequest(requestFriend: RequestFriendDTO): Promise<FriendRequest> {
 
-        const user =  await this.userService.getById(userDto.id);
-        const requester =  await this.userService.getById(requesterDto.id);
+        const user =  await this.userService.getById(requestFriend.idUser);
+        const requested =  await this.userService.getById(requestFriend.idRequested);
 
-        if(!user) throw new NotFoundException("User not found with id:" + userDto.id);
-        if(!requester) throw new NotFoundException("FriendShip not found with id:" + requesterDto.id);
+        if(!user) throw new Error(`User with id ${requestFriend.idUser} not found`);
+        if(!requested) throw new Error(`Requested with id ${requestFriend.idRequested} not found`);
 
-        const request = new FriendRequest(user, requester);
+        const request = new FriendRequest(user, requested);
 
         return this.requestRepository.save(request);
     }
 
-    // devuelve todas las request de un usuario
-    async getRequests(userId: string): Promise<Array<FriendDTO>> {
+    // devuelve la lista de FriendRequest pasandole el userId.
+    async getRequestsByUserId(userId: string): Promise<Array<FriendRequest>> {
 
         const user = await this.userService.getById(userId);
-        if(!user) throw new NotFoundException();
-        const friendRequests = await this.requestRepository.find({ requested: user });
-        
-        let requests: Array<FriendDTO>;
-        for(const friendRequest of friendRequests) {
-            requests.push(new FriendDTO(friendRequest.user.id, friendRequest.user.username, friendRequest.user.isOnline, friendRequest.user.socketId));
-        }
+        if(!user) throw new Error(`User with id ${userId} not found`);
+
+        const requests = await this.requestRepository.find({ requested: user });        
 
         return requests;
     }
 
-    // devuelve una request por el id de la request
-    async getRequestById(idRequest: string): Promise<FriendRequest> {
+    // todo: ¿por user id o por user? con user evitaria la inyección de UserService.
+    // Devuelve la lista de Friendship pasandole el userId.
+    async getFriendsByUserId(userId: string): Promise<Array<Friendship>> {
 
-        const request = await this.requestRepository.findOne(idRequest);
-
-        if(!request) throw new NotFoundException(`Request with id ${idRequest} not found`);
-        
-        return request;
-    }
-
-    async getAllFriends(userId: string): Promise<Array<FriendDTO>> {
-
-        let friends = new Array<FriendDTO>();
         const user = await this.userService.getById(userId);
 
-        if(!user) throw new NotFoundException(`User with id ${userId} not found`);
-        const friendShips = await this.friendShipRepository.find({ user: user });
-        
-        for(let friend of friendShips) {
-            console.log(friendShips);
-            
-            friends.push(new FriendDTO(friend.friend.id, friend.friend.username, friend.friend.isOnline, friend.friend.socketId));
-        }
+        if(!user) throw new Error(`User with id ${userId} not found`);
+        const friends = await this.friendShipRepository.find({ user: user });
 
         return friends;
     }
 
+    // Acepta un FriendRequest pasandole el id de este por parametro
+    // la operacion se hace en una unica transaccion mediante el
+    // uso de QueryRunner (Todo o nada).
     async acceptFriendRequest(idRequest: string): Promise<boolean> {
 
-        const request = await this.requestRepository.findOne(idRequest);
-        
+        const queryRunner = this.connection.createQueryRunner();
 
-        if(!request) {
-            throw new NotFoundException(`Request with id ${idRequest} not found`);
+        await queryRunner.startTransaction();
+
+        try {
+            
+            const friendRequest = await queryRunner.manager.findOneOrFail(FriendRequest, idRequest);
+            await queryRunner.manager.save(Friendship, new Friendship(friendRequest.user, friendRequest.requested));
+            await queryRunner.manager.save(Friendship, new Friendship(friendRequest.requested, friendRequest.user));
+            await queryRunner.manager.remove(FriendRequest, friendRequest);
+        } catch (error) {
+            
+            queryRunner.rollbackTransaction(); 
+            throw new Error(error);
+                       
+        } finally {
+            queryRunner.release();
         }
 
-        
-        const friendShip = new Friendship(request.user, request.requested);
-        const reverseFriendShip = new Friendship(request.requested, request.user);
-
-        this.friendShipRepository.save(friendShip);
-        this.friendShipRepository.save(reverseFriendShip);
-        this.requestRepository.delete(idRequest);
-
-        return !!request;
+        return true;
     }
 
+    // Rechaza un FriendRequest pasandole el id de este por parametro
+    // la operacion se hace en una unica transaccion mediante el
+    // uso de QueryRunner (Todo o nada).
     async rejectFriendShip(idRequest: string): Promise<DeleteResult> {
 
         return await this.requestRepository.delete(idRequest);
+    }
+
+    async deleteFriendship(idFriendship: string): Promise<boolean> {
+
+        const queryRunner = this.connection.createQueryRunner();
+
+        await queryRunner.startTransaction();
+        try {
+            
+            const friendRequest = await queryRunner.manager.findOneOrFail(Friendship, idFriendship);
+            await queryRunner.manager.remove(friendRequest);
+        } catch (error) {
+            queryRunner.rollbackTransaction();
+            throw new Error(error);
+        } finally {
+            queryRunner.release();
+        }
+        return true;
     }
 }
