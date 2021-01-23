@@ -3,7 +3,9 @@ import { AppModule } from './app.module';
 import { JwtSocketAdapter } from './websockets/adapters/jwt-socket.adapter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule,{
+    logger: true
+  });
   app.useWebSocketAdapter(new JwtSocketAdapter(app));
   app.enableCors();
   await app.listen(3000, () => {
