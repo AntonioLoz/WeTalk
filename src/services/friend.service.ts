@@ -60,18 +60,23 @@ export class FriendshipService {
     // Acepta un FriendRequest pasandole el id de este por parametro
     // la operacion se hace en una unica transaccion mediante el
     // uso de QueryRunner (Todo o nada).
-    async acceptFriendRequest(idRequest: string): Promise<boolean> {
+    async acceptFriendRequest(idRequest: string): Promise<Friendship> {
 
         const queryRunner = this.connection.createQueryRunner();
-
+        const friendRequest = await queryRunner.manager.findOneOrFail(FriendRequest, idRequest);
+        let friendship: Friendship;
+        
+        if(!friendRequest) throw new Error("Friend request not found");
+        
         await queryRunner.startTransaction();
 
         try {
             
-            const friendRequest = await queryRunner.manager.findOneOrFail(FriendRequest, idRequest);
-            await queryRunner.manager.save(Friendship, new Friendship(friendRequest.user, friendRequest.requested));
-            await queryRunner.manager.save(Friendship, new Friendship(friendRequest.requested, friendRequest.user));
-            await queryRunner.manager.remove(FriendRequest, friendRequest);
+            
+            await queryRunner.manager.save<Friendship>(new Friendship(friendRequest.user, friendRequest.requested));
+            friendship = await queryRunner.manager.save<Friendship>(new Friendship(friendRequest.requested, friendRequest.user));
+            await queryRunner.manager.remove<FriendRequest>(friendRequest);
+            await queryRunner.commitTransaction();
         } catch (error) {
             
             queryRunner.rollbackTransaction(); 
@@ -81,32 +86,34 @@ export class FriendshipService {
             queryRunner.release();
         }
 
-        return true;
+        return friendship;
     }
 
     // Rechaza un FriendRequest pasandole el id de este por parametro
     // la operacion se hace en una unica transaccion mediante el
     // uso de QueryRunner (Todo o nada).
-    async rejectFriendShip(idRequest: string): Promise<DeleteResult> {
+    async rejectRequest(idRequest: string): Promise<DeleteResult> {
 
         return await this.requestRepository.delete(idRequest);
     }
 
-    async deleteFriendship(idFriendship: string): Promise<boolean> {
+    async deleteFriendship(idFriendship: string): Promise<Friendship> {
 
         const queryRunner = this.connection.createQueryRunner();
+        let friendship: Friendship;
 
         await queryRunner.startTransaction();
         try {
             
             const friendRequest = await queryRunner.manager.findOneOrFail(Friendship, idFriendship);
-            await queryRunner.manager.remove(friendRequest);
+            friendship = await queryRunner.manager.remove<Friendship>(friendRequest);
+            await queryRunner.commitTransaction();
         } catch (error) {
             queryRunner.rollbackTransaction();
             throw new Error(error);
         } finally {
             queryRunner.release();
         }
-        return true;
+        return friendship;
     }
 }

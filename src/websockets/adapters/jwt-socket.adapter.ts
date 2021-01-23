@@ -42,7 +42,6 @@ export class JwtSocketAdapter extends IoAdapter {
                     await this.userService.updateUserConnection(user.id, true, socket.id);
                     user.isOnline = true;
                     user.socketId = socket.id;
-                    console.log("TEST[Adapter](verify): ", user);
                     
                     socket.user = <UserDTO> user;
                     return next();
