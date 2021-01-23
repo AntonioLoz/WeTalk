@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 import { RegisterDTO } from 'src/models/dtos/register.dto';
 import { UserDTO } from 'src/models/dtos/user.dto';
 import { User } from 'src/models/entities/user.entity';
@@ -12,7 +13,7 @@ export class UserController {
 
     }
 
-    @Get()
+    @Get('all')
     @UseGuards(AuthGuard('jwt'))
     async getAll(): Promise<Array<UserDTO>> {
 
@@ -21,12 +22,14 @@ export class UserController {
         return users;
     }
 
-    @Get(':id')
+    @Get()
     @UseGuards(AuthGuard('jwt'))
-    async getUserById(@Param('id') id: string): Promise<UserDTO> {
+    async getUser(@Req() req: Request): Promise<UserDTO> {
+        
+        const requestUser = <User>req.user;
         let user: UserDTO;
         try {
-            user = await this.service.getById(id);
+            user = await this.service.getById(requestUser.id);
         } catch (error) {
             console.error(error);
             
