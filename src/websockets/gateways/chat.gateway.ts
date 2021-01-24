@@ -2,7 +2,7 @@ import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect,
 import { Server } from 'socket.io'
 import { FriendDTO } from "src/models/dtos/friend.dto";
 import { RequestFriendDTO } from "src/models/dtos/request_friend.dto";
-import { FriendshipService } from "src/services/friend.service";
+import { FriendshipService } from "src/services/friendship.service";
 import { UserService } from "src/services/user.service";
 import { CustomSocket } from '../customSocket'
 
@@ -79,7 +79,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     async acceptedFriend(@ConnectedSocket() client: CustomSocket, @MessageBody() idRequest: string): Promise<WsResponse<FriendDTO>> {
         let wsResponse: WsResponse;
         try {
-            await this.friendService.acceptFriendRequest(idRequest);
+            await this.friendService.acceptFriendRequest(idRequest, client.user.id);
             
             wsResponse = { event: '', data: ''}
         } catch (error) {
