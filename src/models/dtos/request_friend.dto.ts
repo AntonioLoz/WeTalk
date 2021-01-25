@@ -2,11 +2,11 @@ import { User } from "../entities/user.entity";
 
 export class RequestFriendDTO {
     
-    idUser1: string;
-    idUser2: string;
+    senderId: string;
+    receiverId: string;
 
-    constructor(idUser1: string, idUser2: string) {
-        this.idUser1 = idUser1;
-        this.idUser2 = idUser2;
+    constructor(senderId: string, receiverId: string) {
+        this.senderId = senderId;
+        this.receiverId = receiverId;
     }
 }

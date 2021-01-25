@@ -66,7 +66,7 @@ export class FriendshipController {
         }
     }
 
-    @Post('accept')
+    @Put('accept')
     @UseGuards(AuthGuard('jwt'))
     async acceptRequest(@Req() req: Request, @Query('idRequest') idRequest: string) {
         try {

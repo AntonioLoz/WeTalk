@@ -1,4 +1,4 @@
-import { BaseEntity, BeforeInsert, Column, CreateDateColumn, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BaseEntity, BeforeInsert, Column, CreateDateColumn, Entity, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import * as bcrypt  from 'bcrypt'
 import { Friendship } from "./friendship.entity";
 import { PersonalMessage } from "./personal_message.entity";
@@ -23,7 +23,7 @@ export class User extends BaseEntity {
     @Column({ type: "bool", nullable: true })
     isOnline: boolean;
 
-    @ManyToMany( () => Friendship, friendship => friendship.users, { cascade: true } )
+    @OneToMany( () => Friendship, friendship => friendship.id, { cascade: true } )
     friendships: Array<Friendship>;
 
     @OneToMany( () => PersonalMessage, message => message.id, { cascade: false })

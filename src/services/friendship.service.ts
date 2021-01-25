@@ -4,13 +4,13 @@ import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
 import { Friendship } from 'src/models/entities/friendship.entity';
 import { User } from 'src/models/entities/user.entity';
 import { FriendshipStatus } from 'src/models/enums/friendship_status';
-import { DeleteResult, Repository, UpdateResult } from 'typeorm';
+import { Repository, UpdateResult } from 'typeorm';
+
+// TODO: Sopesar la posibilidad de abstraer las operaciones de bbdd en un custom repository 
 
 @Injectable()
 export class FriendshipService {
 
-    // Inyectamos Connection para poder hacer uso de QueryRunner y así tener control sobre las 
-    // transacciones. 
     constructor(@InjectRepository(Friendship) private friendRepository: Repository<Friendship>,
                 @InjectRepository(User) private userRepository: Repository<User>) {
 
@@ -19,13 +19,13 @@ export class FriendshipService {
     // nueva solicitud de amistad (emisor, receptor).
     async newRequest(requestFriend: RequestFriendDTO): Promise<Friendship> {
         
-        const user1 = await this.userRepository.findOne(requestFriend.idUser1);
-        const user2 = await this.userRepository.findOne(requestFriend.idUser2);
+        const sender = await this.userRepository.findOne(requestFriend.senderId);
+        const receiver = await this.userRepository.findOne(requestFriend.receiverId);
 
-        if(!user1) throw new Error(`User with id ${requestFriend.idUser1} not found`);
-        if(!user2) throw new Error(`User with id ${requestFriend.idUser2} not found`);
+        if(!sender) throw new Error(`User with id ${requestFriend.senderId} not found`);
+        if(!receiver) throw new Error(`User with id ${requestFriend.receiverId} not found`);
 
-        const friendship = new Friendship(new Array<User>(user1, user2));
+        const friendship = new Friendship(sender, receiver);
 
         return this.friendRepository.save(friendship); 
     }
@@ -37,7 +37,7 @@ export class FriendshipService {
 
             const friendRequestIds = await this.friendRepository
                 .createQueryBuilder('friendship') // friendship es el alias (select f from friends f where...)
-                .innerJoinAndSelect('friendship.users', 'user', 'user.id = :id', { id: userId}) // con innerJoin devuelve los friendship que tengan usuarios
+                .innerJoinAndSelect('friendship.receiver', 'user', 'user.id = :id', { id: userId}) // con innerJoin devuelve los friendship que tengan usuarios
                                                                                                 // con leftJoin devuelve los friendship tengan o no usuarios
                                                                                                 // user será el alias de la tabla users a la que apunta nuestra relación.
                 .where('friendship.status = :status', { status: FriendshipStatus.pending })
@@ -45,7 +45,7 @@ export class FriendshipService {
                 .getMany();
 
                 let friendRequests = new Array<Friendship>();
-                for(const friendRequestId of friendRequestIds){  
+                for(const friendRequestId of friendRequestIds){
                     friendRequests.push(await this.friendRepository.findOne(friendRequestId.id));
                 }
 
@@ -63,8 +63,11 @@ export class FriendshipService {
 
             const friendRequestIds = await this.friendRepository
                 .createQueryBuilder('friendship')
-                .innerJoinAndSelect('friendship.users', 'user', 'user.id = :id', { id: userId})
+                .innerJoinAndSelect('friendship.sender', 'sender')
+                .innerJoinAndSelect('friendship.receiver', 'receiver')
                 .where('friendship.status = :status', { status: FriendshipStatus.accepted })
+                .andWhere('sender.id = :id', { id: userId})
+                .orWhere('receiver.id = :id', { id: userId})
                 .select(['friendship.id'])
                 .getMany();
 
@@ -81,21 +84,16 @@ export class FriendshipService {
     }
 
     // Acepta un FriendRequest pasandole el id de este por parametro
-    async acceptFriendRequest(idFriendship: string, userId: string): Promise<UpdateResult> {
+    async acceptFriendRequest(friendshipId: string, userId: string): Promise<UpdateResult> {
 
         try {
-            const friendship = await this.isUserInFriendship(idFriendship, userId);
-            let result: UpdateResult
-            if(friendship && friendship.status === FriendshipStatus.pending) {
-                result = await this.friendRepository.update({ id: idFriendship }, { status: FriendshipStatus.accepted });
-                if(result.affected === 0) throw new Error(`Friendship with id ${idFriendship} not updated`);
+            const friendship = await this.friendRepository.findOne(friendshipId)
+            if(!(friendship && friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
+            const result = await this.friendRepository.update({ id: friendshipId }, { status: FriendshipStatus.accepted });
+            if(result.affected <= 0) throw new Error(`Friendship with id ${friendshipId} not updated`);
                 
-            }
-            else {
-                throw new Error(`Friendship with id ${idFriendship} not updated`);
-            }
-
             return result;
+            
 
         } catch (error) {
             throw new Error(error);
@@ -103,46 +101,36 @@ export class FriendshipService {
     }
 
     // Rechaza un FriendRequest pasandole el id de este por parametro
-    async rejectRequest(idFriendship: string, userId: string): Promise<UpdateResult> {
+    async rejectRequest(friendshipId: string, userId: string): Promise<UpdateResult> {
 
         try {
-            const friendship = await this.isUserInFriendship(idFriendship, userId);
-            if(!(friendship && friendship.status === FriendshipStatus.pending)) throw new Error(`Friendship with id ${idFriendship} not updated`);
-            const result = await this.friendRepository.update({ id: idFriendship }, { status: FriendshipStatus.reject });
-            if(result.affected === 0) throw new Error(`Friendship with id ${idFriendship} not updated`);
+            const friendship = await this.friendRepository.findOne(friendshipId)
 
-            return result;
-
-        } catch (error) {
-            throw new Error(error);
-        }
-    }
-
-    async deleteFriendship(idFriendship: string, userId: string): Promise<Friendship> {
-
-        try {
-            const friendship = await this.isUserInFriendship(idFriendship, userId);
-            let result: Friendship
-            if(friendship && friendship.status === FriendshipStatus.accepted) {
-                result = await this.friendRepository.remove(friendship);
+            if(!(friendship && friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
+            const result = await this.friendRepository.update({ id: friendshipId }, { status: FriendshipStatus.rejected });
+            if(result.affected <= 0) throw new Error(`Friendship with id ${friendshipId} not updated`);
                 
-            }
-            else {
-                throw new Error(`Friendship with id ${idFriendship} not deleted`);
-            }
-
             return result;
+            
 
         } catch (error) {
             throw new Error(error);
         }
     }
 
-    private async isUserInFriendship(frienshipId: string, userId: string): Promise<Friendship | null> {
+    async deleteFriendship(friendshipId: string, userId: string): Promise<Friendship> {
 
-        const friendship = await this.friendRepository.findOne(frienshipId);
-        
-         
-         return (friendship.users[0].id === userId || friendship.users[1].id === userId) ? friendship : null
+        try {
+            const friendship = await this.friendRepository.findOne(friendshipId)
+            
+            if(!(friendship && friendship.status === FriendshipStatus.accepted && (friendship.receiver.id === userId || friendship.sender.id === userId))) throw new Error(`Friendship with id ${friendshipId} not deleted`);
+            const result = await this.friendRepository.remove(friendship);    
+            if(!result) throw new Error(`Friendship with id ${friendshipId} not deleted`);
+            return result;
+            
+
+        } catch (error) {
+            throw new Error(error);
+        }
     }
 }

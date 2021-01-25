@@ -14,9 +14,9 @@ export class PersonalMessage extends BaseEntity {
     @CreateDateColumn()
     createdAt: Date;
 
-    @ManyToOne( () => Friendship, friendship => friendship.messages )
-    friendship: Friendship;
-
     @ManyToOne( () => User, user => user.personalMessages, { eager: true } )
-    user: User;
+    sender: User;
+
+    @ManyToOne( ()=> User, user => user.personalMessages, { eager: true })
+    receiver: User;
 }

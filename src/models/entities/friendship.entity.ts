@@ -1,4 +1,4 @@
-import { BaseEntity, Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity";
 import { FriendshipStatus } from "../enums/friendship_status"
 import { PersonalMessage } from "./personal_message.entity";
@@ -12,12 +12,11 @@ export class Friendship extends BaseEntity {
     @Column({ type: 'enum', enum: FriendshipStatus ,default: FriendshipStatus.pending, nullable: false })
     status: FriendshipStatus;
 
-    @ManyToMany( () => User, (user: User) => user.friendships, { eager: true })
-    @JoinTable()
-    users: Array<User>;
+    @ManyToOne( () => User, user => user.friendships, { eager: true } )
+    sender: User;
 
-    @OneToMany( () => PersonalMessage, message => message.friendship, { eager: true })
-    messages: Array<PersonalMessage>;
+    @ManyToOne( ()=> User, user => user.friendships, { eager: true })
+    receiver: User;
 
     @CreateDateColumn()
     registeredAt: Date;
@@ -26,9 +25,10 @@ export class Friendship extends BaseEntity {
     updatedAt: Date;
 
 
-    constructor(users: Array<User>) {
+    constructor(sender: User, receiver: User) {
         
         super();
-        this.users = users
+        this.sender = sender;
+        this.receiver = receiver;
     }
 }

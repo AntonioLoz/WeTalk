@@ -18,5 +18,5 @@ export class GroupMessage extends BaseEntity {
     group: Group;
 
     @ManyToOne( () => User, user => user.id)
-    user: User;
+    sender: User;
 }
