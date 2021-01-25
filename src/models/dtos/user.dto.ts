@@ -1,6 +1,3 @@
-import { Friendship } from "../entities/friend.entity";
-import { FriendRequest } from "../entities/friend_request.entity";
-// import { FriendRequest } from "../entities/friend_request.entity";
 
 export class UserDTO {
 

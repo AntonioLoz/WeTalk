@@ -1,14 +1,10 @@
-import { Controller, Delete, Get, HttpException, HttpStatus, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, HttpException, HttpStatus, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { FriendDTO } from 'src/models/dtos/friend.dto';
 import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
-import { ResponseFriendDTO } from 'src/models/dtos/response_friend.dto';
-import { Friendship } from 'src/models/entities/friend.entity';
-import { FriendRequest } from 'src/models/entities/friend_request.entity';
+import { Friendship } from 'src/models/entities/friendship.entity';
 import { User } from 'src/models/entities/user.entity';
-import { FriendshipService } from 'src/services/friend.service';
-import { DeleteResult } from 'typeorm';
+import { FriendshipService } from 'src/services/friendship.service';
 
 // todo: pasar el mapeo de entidades al servicio correspondiente
 @Controller('friendship')
@@ -22,94 +18,90 @@ export class FriendshipController {
     @Post('new')
     @UseGuards(AuthGuard('jwt'))
     async newRequestFriend(@Req() request: Request, @Query('idRequested') idRequested: string): Promise<any> {
-        const user = <User> request.user;
-        console.log('idRequested: ', idRequested);
-        
+       
+        const user = <User> request.user;        
         const requestFriend = new RequestFriendDTO(user.id, idRequested);
-        let out: FriendRequest;
 
         try {
-            out = await this.friendService.newRequest(requestFriend);
+           const out = await this.friendService.newRequest(requestFriend);
+           return out;
         } catch (error) {
             console.error(error);
             
         }
-
-        return out;
     }
 
     // devuelve las peticiones del user id
     @Get('requests')
     @UseGuards(AuthGuard('jwt'))
-    async getRequests(@Req() req: Request): Promise<Array<ResponseFriendDTO>> {
+    async getRequests(@Req() req: Request): Promise<Array<Friendship>> {
         
-        let requestFriend = Array<ResponseFriendDTO>();
         const user = <User>req.user;
         
         try {    
             const requests = await this.friendService.getRequestsByUserId(user.id);
-
-            for(const request of requests) {
-                requestFriend.push(new ResponseFriendDTO(request.id, request.user.id, request.user.username, request.user.isOnline, request.user.socketId));
-            }
-
+            return requests;
         } catch (error) {
 
             console.error(error);
             throw new HttpException(error, HttpStatus.NOT_FOUND)
         }
-
-        return requestFriend;
     }
 
     // devuelve las amistades del usuarid
     @Get('friends')
     @UseGuards(AuthGuard('jwt'))
-    async getFriends(@Req() req: Request): Promise<Array<FriendDTO>> {
-        let friends = Array<FriendDTO>();
+    async getFriends(@Req() req: Request): Promise<Array<Friendship>> {
+        
         const user = <User> req.user;
 
         try {    
             const friendships = await this.friendService.getFriendsByUserId(user.id);
-            for(const friendship of friendships) {
-                friends.push(new FriendDTO(friendship.id, friendship.friend.id, friendship.friend.username, friendship.friend.isOnline, friendship.friend.socketId));
-            }
+            return friendships;
 
         } catch (error) {
 
             console.error(error);
             throw new HttpException(error, HttpStatus.NOT_FOUND);
         }
-
-        return friends;
     }
 
-    @Post('accept')
+    @Put('accept')
     @UseGuards(AuthGuard('jwt'))
-    async acceptRequest(@Query('idRequest') idRequest: string): Promise<Friendship> {
-        
-        let friendship: Friendship;
-
+    async acceptRequest(@Req() req: Request, @Query('idRequest') idRequest: string) {
         try {
-            
-            friendship = await this.friendService.acceptFriendRequest(idRequest);
+            const user = <User>req.user
+            await this.friendService.acceptFriendRequest(idRequest, user.id);
         } catch (error) {
             console.error(error);
             throw new HttpException(error, HttpStatus.NOT_FOUND);
         }
 
-        return friendship;
     }
 
-    @Delete('reject')
+    @Put('reject')
     @UseGuards(AuthGuard('jwt'))
-    async rejectRequest(@Query('idRequest') idRequest: string): Promise<DeleteResult> {
-        return this.friendService.rejectRequest(idRequest);
+    async rejectRequest(@Req() req: Request, @Query('idRequest') idRequest: string) {
+        
+        const user = <User> req.user;
+        try {
+            this.friendService.rejectRequest(idRequest, user.id);
+        } catch (error) {
+            console.error(error);            
+            throw new HttpException(error, HttpStatus.NOT_FOUND);
+        }
     }
 
     @Delete('delete')
     @UseGuards(AuthGuard('jwt'))
-    async deleteFriendship(@Query('idFriendship') idFriendship: string) {
-        return this.friendService.deleteFriendship(idFriendship);
+    async deleteFriendship(@Req() req: Request, @Query('idFriendship') idFriendship: string) {
+
+        const user = <User> req.user;
+        try {
+            this.friendService.deleteFriendship(idFriendship, user.id);
+        } catch (error) {
+            console.error(error);            
+            throw new HttpException(error, HttpStatus.NOT_FOUND);
+        }
     }
 }

@@ -1,8 +1,9 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer, WsResponse } from "@nestjs/websockets";
 import { Server } from 'socket.io'
 import { FriendDTO } from "src/models/dtos/friend.dto";
+import { MessageDTO } from "src/models/dtos/message.dto";
 import { RequestFriendDTO } from "src/models/dtos/request_friend.dto";
-import { FriendshipService } from "src/services/friend.service";
+import { FriendshipService } from "src/services/friendship.service";
 import { UserService } from "src/services/user.service";
 import { CustomSocket } from '../customSocket'
 
@@ -59,11 +60,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const friendRequested = await this.friendService.newRequest(new RequestFriendDTO(client.user.id, friendId));
             const friend = await this.userService.getById(friendId);
             
-            if(friend.isOnline){
+            if(friend.isOnline && friend.socketId){
 
-                this.server.emit('friend_request', friend).to(friend.socketId);
+                this.server.to(friend.socketId).emit('friend_request', friend);
             }
             
+            // todo: revisar response
             wsResponse = { event: 'friend_request_resolution', data: friendRequested }
 
         } catch (error) {
@@ -79,7 +81,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     async acceptedFriend(@ConnectedSocket() client: CustomSocket, @MessageBody() idRequest: string): Promise<WsResponse<FriendDTO>> {
         let wsResponse: WsResponse;
         try {
-            await this.friendService.acceptFriendRequest(idRequest);
+            await this.friendService.acceptFriendRequest(idRequest, client.user.id);
             
             wsResponse = { event: '', data: ''}
         } catch (error) {
@@ -89,4 +91,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
         return wsResponse;
     } 
+
+    @SubscribeMessage('message')
+    async sendMessageTo(@ConnectedSocket() client: CustomSocket, @MessageBody() message: MessageDTO) {
+
+        
+    }
 }
