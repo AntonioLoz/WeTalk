@@ -11,12 +11,23 @@ export class PersonalMessage extends BaseEntity {
     @Column( {type: 'text', nullable: false} )
     message: string;
 
-    @CreateDateColumn()
-    createdAt: Date;
-
     @ManyToOne( () => User, user => user.personalMessages, { eager: true } )
     sender: User;
 
-    @ManyToOne( ()=> User, user => user.personalMessages, { eager: true })
+    @ManyToOne( () => User, user => user.personalMessages, { eager: true })
     receiver: User;
+
+    @ManyToOne( () => Friendship, friendship => friendship.messages)
+    friendship: Friendship;
+
+    @CreateDateColumn()
+    createdAt: Date;
+
+    constructor(message: string, sender: User, receiver: User, friendship: Friendship){
+        super();
+        this.message = message;
+        this.sender = sender;
+        this.receiver = receiver;
+        this.friendship = friendship;
+    }
 }

@@ -2,22 +2,18 @@ import { INestApplicationContext } from "@nestjs/common";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { ServerOptions, Server } from "socket.io";
 import { TokenDTO } from "src/models/dtos/token.dto";
-import { UserDTO } from "src/models/dtos/user.dto";
 import { User } from "src/models/entities/user.entity";
 import { AuthService } from "src/services/auth.service";
-import { UserService } from "src/services/user.service";
 import { CustomSocket } from "../customSocket";
 
 
 export class JwtSocketAdapter extends IoAdapter {
 
     private authService: AuthService;
-    private userService: UserService;
 
     constructor(private app: INestApplicationContext) {
         super(app);
         this.authService = this.app.get<AuthService, AuthService>(AuthService);
-        this.userService = this.app.get<UserService, UserService>(UserService);
     }
 
     create(port: number, options?: ServerOptions) {
@@ -40,7 +36,7 @@ export class JwtSocketAdapter extends IoAdapter {
             this.authService.verify(new TokenDTO(socket.handshake.query.token)).then( async (user: User) => {
                 try{
                     
-                    socket.user = <UserDTO> user;
+                    socket.user = <User> user;
                     return next();
                 }
                 catch(error) {

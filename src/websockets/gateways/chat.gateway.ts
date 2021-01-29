@@ -3,8 +3,6 @@ import { Server } from 'socket.io'
 import { FriendshipDTO } from "src/models/dtos/friendship.dto";
 import { FriendConnectionUpdateDTO } from "src/models/dtos/friend_update.dto";
 import { MessageDTO } from "src/models/dtos/message.dto";
-import { User } from "src/models/entities/user.entity";
-import { FriendConnectionStatus } from "src/models/enums/connection_status";
 import { FriendshipService } from "src/services/friendship.service";
 import { UserService } from "src/services/user.service";
 import { CustomSocket } from '../customSocket'
@@ -16,7 +14,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     private server: Server;
 
-    constructor(private userService: UserService, private friendService: FriendshipService) {
+    constructor(private userService: UserService, private friendService: FriendshipService,) {
 
     }
 
@@ -60,10 +58,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @SubscribeMessage('message')
     async sendMessageTo(@ConnectedSocket() client: CustomSocket, @MessageBody() message: MessageDTO) {
+        try {
+            message.sender = client.user;
+            
+            this.friendService.createMessage(message);
+            this.server.to(message.receiver.socketId).emit('message', message);
+        } catch (error) {
+            console.log(error);
+        }
         
-        message.userId = client.user.id;
-        message.username = client.user.username;
-        this.server.to(message.socketId).emit('message', message);
     }
 
     private async sendFriendConnectionUpdate(friendships: Array<FriendshipDTO>, socketId: string, isConnected: boolean) {
@@ -72,6 +75,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             this.server.to(friendship.sender.socketId).emit('friend_connection_update', new FriendConnectionUpdateDTO(friendship.id, isConnected, socketId))
         }
     }
+}
     
     // @SubscribeMessage('friend_request')
     // async addFriendRequest(@ConnectedSocket() client: CustomSocket, @MessageBody() friendId: string): Promise<WsResponse<any>> {
@@ -114,4 +118,3 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // } 
 
 
-}

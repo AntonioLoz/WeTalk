@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FriendshipDTO } from 'src/models/dtos/friendship.dto';
+import { MessageDTO } from 'src/models/dtos/message.dto';
 import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
 import { UserDTO } from 'src/models/dtos/user.dto';
 import { Friendship } from 'src/models/entities/friendship.entity';
+import { PersonalMessage } from 'src/models/entities/personal_message.entity';
 import { User } from 'src/models/entities/user.entity';
 import { FriendshipStatus } from 'src/models/enums/friendship_status';
 import { Repository, UpdateResult } from 'typeorm';
@@ -33,30 +35,18 @@ export class FriendshipService {
         return this.friendRepository.save(friendship); 
     }
 
-    // devuelve la lista de FriendRequest pasandole el userId.
-    async getRequestsByUserId(userId: string): Promise<Array<FriendshipDTO>> {
-
-        try {
-
-            const friendRequestIds = await this.friendRepository
-                .createQueryBuilder('friendship') // friendship es el alias (select f from friends f where...)
-                .innerJoinAndSelect('friendship.receiver', 'user', 'user.id = :id', { id: userId}) // con innerJoin devuelve los friendship que tengan usuarios
-                                                                                                // con leftJoin devuelve los friendship tengan o no usuarios
-                                                                                                // user será el alias de la tabla users a la que apunta nuestra relación.
-                .where('friendship.status = :status', { status: FriendshipStatus.pending })
-                .select(['friendship.id'])
-                .getMany();
-
-                let friendRequests = new Array<FriendshipDTO>();
-                for(const friendRequestId of friendRequestIds){
-                    const friendship = await this.friendRepository.findOne(friendRequestId.id);
-                    friendRequests.push(new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt));
-                }
-
-        return friendRequests;
-        } catch (error) {
-            throw new Error(error);
-        }
+    async getFriendshipByUsersIds(userId1: string, userId2: string): Promise<Friendship> {
+        const friendship = await this.friendRepository
+                .createQueryBuilder('friendship')
+                .innerJoinAndSelect('friendship.sender', 'sender')
+                .innerJoinAndSelect('friendship.receiver', 'receiver')
+                .leftJoinAndSelect('friendship.messages', 'messages')
+                .where('sender.id = :id1 AND receiver.id = :id2 OR sender.id = :id2 AND receiver.id = :id1', { id1: userId1, id2: userId2 })
+                // .andWhere('friendship.sender = :id', { id: userId2 })
+                // .orWhere('friendship.receiver = :id', { id: userId2 })
+                .getOne();
+                            
+        return friendship;
     }
 
     // Devuelve la lista de Friendship pasandole el userId.
@@ -75,12 +65,20 @@ export class FriendshipService {
                 .getMany();
             
                 let friendships = new Array<FriendshipDTO>();
-                for(const friendRequestId of friendshipsIds) {
+                for(const friendshipId of friendshipsIds) {
                     
-                    const friendRequest = await this.friendRepository.findOne(friendRequestId.id);
+                    const friendship = await this.friendRepository.findOne(friendshipId.id);
                     
-                    const friendDTO = (friendRequest.receiver.id === userId) ? 
-                        new FriendshipDTO(friendRequest.id, friendRequest.sender, friendRequest.registeredAt) : new FriendshipDTO(friendRequest.id, friendRequest.receiver, friendRequest.registeredAt);
+                    const friendDTO = (friendship.receiver.id === userId) ? 
+                        new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt, friendship.messages) : new FriendshipDTO(friendship.id, friendship.receiver, friendship.registeredAt, friendship.messages);
+
+                        friendship.messages = friendship.messages.sort(function(a,b){
+                            // Turn your strings into dates, and then subtract them
+                            // to get a value that is either negative, positive, or zero.
+                            return a.createdAt.getTime() - b.createdAt.getTime();
+                          });
+
+                        
                     
                     friendships.push(friendDTO);
                 }
@@ -90,6 +88,47 @@ export class FriendshipService {
             throw new Error(error);
         }
 
+    }
+
+    async getFriendsConnected(userId: string): Promise<Array<FriendshipDTO>> {
+        let friendshipsDTO = new Array<FriendshipDTO>();
+        const friendships = await this.getFriendsByUserId(userId);
+                
+
+        for(const friendship of friendships) {
+            if (friendship.sender.isOnline) {
+                const friendDTO = new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt, friendship.messages);
+                friendshipsDTO.push(friendDTO);
+            }
+        }
+
+        return friendshipsDTO;
+    }
+
+    // devuelve la lista de FriendRequest pasandole el userId.
+    async getRequestsByUserId(userId: string): Promise<Array<FriendshipDTO>> {
+
+        try {
+
+            const friendRequestIds = await this.friendRepository
+                .createQueryBuilder('friendship') // friendship es el alias (select f from friends f where...)
+                .innerJoinAndSelect('friendship.receiver', 'user', 'user.id = :id', { id: userId}) // con innerJoin devuelve los friendship que tengan usuarios
+                                                                                                // con leftJoin devuelve los friendship tengan o no usuarios
+                                                                                                // user será el alias de la tabla users a la que apunta nuestra relación.
+                .where('friendship.status = :status', { status: FriendshipStatus.pending })
+                .select(['friendship.id'])
+                .getMany();
+
+                let friendRequests = new Array<FriendshipDTO>();
+                for(const friendRequestId of friendRequestIds){
+                    const friendship = await this.friendRepository.findOne(friendRequestId.id);
+                    friendRequests.push(new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt, friendship.messages));
+                }
+
+        return friendRequests;
+        } catch (error) {
+            throw new Error(error);
+        }
     }
 
     // Acepta un FriendRequest pasandole el id de este por parametro
@@ -143,18 +182,18 @@ export class FriendshipService {
         }
     }
 
-    async getFriendsConnected(userId: string): Promise<Array<FriendshipDTO>> {
-        let friendshipsDTO = new Array<FriendshipDTO>();
-        const friendships = await this.getFriendsByUserId(userId);
-                
-
-        for(const friendship of friendships) {
-            if (friendship.sender.isOnline) {
-                const friendDTO = new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt);
-                friendshipsDTO.push(friendDTO);
-            }
+    async createMessage(message: MessageDTO): Promise<boolean> {
+        try {
+            const friendship = await this.getFriendshipByUsersIds(message.receiver.id, message.sender.id);
+            
+            friendship.messages.push(new PersonalMessage(message.message, message.sender, message.receiver, friendship));
+            await this.friendRepository.save(friendship);
+            return true;
         }
-
-        return friendshipsDTO;
+        
+        catch(error) {
+            console.error(error);
+            
+        }
     }
 }
