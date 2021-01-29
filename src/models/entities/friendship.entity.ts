@@ -24,7 +24,6 @@ export class Friendship extends BaseEntity {
     @UpdateDateColumn()
     updatedAt: Date;
 
-
     constructor(sender: User, receiver: User) {
         
         super();

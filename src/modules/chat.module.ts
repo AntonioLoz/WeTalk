@@ -22,4 +22,4 @@ import { UsersModule } from './users.module';
         
     ]
 })
-export class RoomModule {}
+export class ChatModule {}

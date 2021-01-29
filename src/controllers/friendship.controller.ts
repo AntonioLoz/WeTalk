@@ -1,6 +1,7 @@
 import { Controller, Delete, Get, HttpException, HttpStatus, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
+import { FriendshipDTO } from 'src/models/dtos/friendship.dto';
 import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
 import { Friendship } from 'src/models/entities/friendship.entity';
 import { User } from 'src/models/entities/user.entity';
@@ -34,7 +35,7 @@ export class FriendshipController {
     // devuelve las peticiones del user id
     @Get('requests')
     @UseGuards(AuthGuard('jwt'))
-    async getRequests(@Req() req: Request): Promise<Array<Friendship>> {
+    async getRequests(@Req() req: Request): Promise<Array<FriendshipDTO>> {
         
         const user = <User>req.user;
         
@@ -51,7 +52,7 @@ export class FriendshipController {
     // devuelve las amistades del usuarid
     @Get('friends')
     @UseGuards(AuthGuard('jwt'))
-    async getFriends(@Req() req: Request): Promise<Array<Friendship>> {
+    async getFriends(@Req() req: Request): Promise<Array<FriendshipDTO>> {
         
         const user = <User> req.user;
 

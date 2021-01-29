@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/models/entities/user.entity';
+import { FriendshipStatus } from 'src/models/enums/friendship_status';
 import { Repository, UpdateResult } from 'typeorm';
 
 @Injectable()

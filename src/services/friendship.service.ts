@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { FriendshipDTO } from 'src/models/dtos/friendship.dto';
 import { RequestFriendDTO } from 'src/models/dtos/request_friend.dto';
+import { UserDTO } from 'src/models/dtos/user.dto';
 import { Friendship } from 'src/models/entities/friendship.entity';
 import { User } from 'src/models/entities/user.entity';
 import { FriendshipStatus } from 'src/models/enums/friendship_status';
 import { Repository, UpdateResult } from 'typeorm';
 
 // TODO: Sopesar la posibilidad de abstraer las operaciones de bbdd en un custom repository 
-
+// TODO: Sopesar la posibilidad de que Friendship sea un agregado junto con User 
+// en la que User seía la clave del agregado
 @Injectable()
 export class FriendshipService {
 
@@ -31,7 +34,7 @@ export class FriendshipService {
     }
 
     // devuelve la lista de FriendRequest pasandole el userId.
-    async getRequestsByUserId(userId: string): Promise<Array<Friendship>> {
+    async getRequestsByUserId(userId: string): Promise<Array<FriendshipDTO>> {
 
         try {
 
@@ -44,9 +47,10 @@ export class FriendshipService {
                 .select(['friendship.id'])
                 .getMany();
 
-                let friendRequests = new Array<Friendship>();
+                let friendRequests = new Array<FriendshipDTO>();
                 for(const friendRequestId of friendRequestIds){
-                    friendRequests.push(await this.friendRepository.findOne(friendRequestId.id));
+                    const friendship = await this.friendRepository.findOne(friendRequestId.id);
+                    friendRequests.push(new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt));
                 }
 
         return friendRequests;
@@ -55,28 +59,33 @@ export class FriendshipService {
         }
     }
 
-    // todo: ¿por user id o por user? con user evitaria la inyección de UserService.
     // Devuelve la lista de Friendship pasandole el userId.
-    async getFriendsByUserId(userId: string): Promise<Array<Friendship>> {
+    async getFriendsByUserId(userId: string): Promise<Array<FriendshipDTO>> {
         
-        try {
+        try {    
 
-            const friendRequestIds = await this.friendRepository
+            const friendshipsIds = await this.friendRepository
                 .createQueryBuilder('friendship')
                 .innerJoinAndSelect('friendship.sender', 'sender')
                 .innerJoinAndSelect('friendship.receiver', 'receiver')
-                .where('friendship.status = :status', { status: FriendshipStatus.accepted })
-                .andWhere('sender.id = :id', { id: userId})
+                .where('sender.id = :id', { id: userId})
                 .orWhere('receiver.id = :id', { id: userId})
+                .andWhere('friendship.status = :status', { status: FriendshipStatus.accepted })
                 .select(['friendship.id'])
                 .getMany();
-
-                let friendRequests = new Array<Friendship>();
-                for(const friendRequestId of friendRequestIds){  
-                    friendRequests.push(await this.friendRepository.findOne(friendRequestId.id));
+            
+                let friendships = new Array<FriendshipDTO>();
+                for(const friendRequestId of friendshipsIds) {
+                    
+                    const friendRequest = await this.friendRepository.findOne(friendRequestId.id);
+                    
+                    const friendDTO = (friendRequest.receiver.id === userId) ? 
+                        new FriendshipDTO(friendRequest.id, friendRequest.sender, friendRequest.registeredAt) : new FriendshipDTO(friendRequest.id, friendRequest.receiver, friendRequest.registeredAt);
+                    
+                    friendships.push(friendDTO);
                 }
 
-        return friendRequests;
+        return friendships;
         } catch (error) {
             throw new Error(error);
         }
@@ -87,8 +96,8 @@ export class FriendshipService {
     async acceptFriendRequest(friendshipId: string, userId: string): Promise<UpdateResult> {
 
         try {
-            const friendship = await this.friendRepository.findOne(friendshipId)
-            if(!(friendship && friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
+            const friendship = await this.friendRepository.findOneOrFail(friendshipId)
+            if(!(friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
             const result = await this.friendRepository.update({ id: friendshipId }, { status: FriendshipStatus.accepted });
             if(result.affected <= 0) throw new Error(`Friendship with id ${friendshipId} not updated`);
                 
@@ -104,9 +113,9 @@ export class FriendshipService {
     async rejectRequest(friendshipId: string, userId: string): Promise<UpdateResult> {
 
         try {
-            const friendship = await this.friendRepository.findOne(friendshipId)
+            const friendship = await this.friendRepository.findOneOrFail(friendshipId)
 
-            if(!(friendship && friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
+            if(!(friendship.status === FriendshipStatus.pending && friendship.receiver.id === userId)) throw new Error(`Friendship with id ${friendshipId} not updated`);
             const result = await this.friendRepository.update({ id: friendshipId }, { status: FriendshipStatus.rejected });
             if(result.affected <= 0) throw new Error(`Friendship with id ${friendshipId} not updated`);
                 
@@ -132,5 +141,20 @@ export class FriendshipService {
         } catch (error) {
             throw new Error(error);
         }
+    }
+
+    async getFriendsConnected(userId: string): Promise<Array<FriendshipDTO>> {
+        let friendshipsDTO = new Array<FriendshipDTO>();
+        const friendships = await this.getFriendsByUserId(userId);
+                
+
+        for(const friendship of friendships) {
+            if (friendship.sender.isOnline) {
+                const friendDTO = new FriendshipDTO(friendship.id, friendship.sender, friendship.registeredAt);
+                friendshipsDTO.push(friendDTO);
+            }
+        }
+
+        return friendshipsDTO;
     }
 }

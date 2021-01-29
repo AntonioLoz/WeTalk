@@ -23,7 +23,7 @@ export class User extends BaseEntity {
     @Column({ type: "bool", nullable: true })
     isOnline: boolean;
 
-    @OneToMany( () => Friendship, friendship => friendship.id, { cascade: true } )
+    @OneToMany( () => Friendship, friendship => friendship.id, { cascade: true} )
     friendships: Array<Friendship>;
 
     @OneToMany( () => PersonalMessage, message => message.id, { cascade: false })
