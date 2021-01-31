@@ -35,7 +35,6 @@ export class JwtSocketAdapter extends IoAdapter {
 
             this.authService.verify(new TokenDTO(socket.handshake.query.token)).then( async (user: User) => {
                 try{
-                    
                     socket.user = <User> user;
                     return next();
                 }
