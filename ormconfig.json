@@ -4,6 +4,8 @@
     "port": 3306,
     "username": "root",
     "password": "",
+    "loggin": true,
+    "logger": "advanced-console",
     "database": "chat",
     "entities": ["dist/**/*.entity{.ts,.js}"],
     "synchronize": true,

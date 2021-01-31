@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/models/entities/user.entity';
+import { FriendshipStatus } from 'src/models/enums/friendship_status';
 import { Repository, UpdateResult } from 'typeorm';
 
 @Injectable()
@@ -10,16 +11,23 @@ export class UserService {
 
     }
 
+    // todo: Retornar UserDTO
     async getAll(): Promise<Array<User>> {
         return await this.repository.find();
     }
 
     async getById(id: string): Promise<User> {
-        return await this.repository.findOne(id);
+
+        const user = await this.repository.findOne(id);
+        if(!user) throw new NotFoundException(`User with id ${id} not found.`);
+
+        return user;
     }
 
     async getByUsername(username: string): Promise<User> {
-        return await this.repository.findOne({ where: { username: username }});
+        const user = await this.repository.findOne({ where: { username: username }});
+        if(!user) throw new NotFoundException(`User with username ${username} not found`)
+        return user;
     }
 
     async save(user: User): Promise<User> {
@@ -27,7 +35,6 @@ export class UserService {
         return await this.repository.save(user)
     }
 
-    // todo: completar
     async update(id: string, user: User): Promise<UpdateResult> {
         const toUpdate = await this.repository.findOne(id);
     
@@ -40,10 +47,10 @@ export class UserService {
         toUpdate.socketId = user.socketId;
     
         
-        return this.repository.update({ id: id }, {});;
+        return this.repository.update({ id: id }, {});
     }
 
-    async setUserConnection(userId: string, isOnline: boolean, socketId?: string,): Promise<UpdateResult> {
+    async updateUserConnection(userId: string, isOnline: boolean, socketId?: string,): Promise<UpdateResult> {
         
         let user = await this.repository.findOne(userId);
         

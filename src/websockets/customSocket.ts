@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
-import { UserDTO } from 'src/models/dtos/user.dto';
+import { User } from 'src/models/entities/user.entity';
 
 export interface CustomSocket extends Socket {
-    user: UserDTO;
+    user: User;
 }
